@@ -1,0 +1,18 @@
+# Compiled binary
+app
+
+# Object files
+*.o
+
+# macOS 'rubish'
+.DS_Store
+
+# Build directory from cmake
+build/
+
+# Output files - for recordings
+output.mp4
+*.mp4
+
+# keeps my video
+!assets/dolphins.MP4  
