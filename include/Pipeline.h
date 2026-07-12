@@ -15,18 +15,20 @@ private:
     bool buildPipeline();
     bool startPipeline();
     void listenToBus();
-    void setUri();
+    void configureElements();
     void connectSignals();
     static void padAddedHandler(GstElement *src, GstPad *pad, Pipeline *self);
     void onPadAdded(GstElement *src, GstPad *pad);
 
     // Pipeline elements
-    GstElement *pipeline;
-    GstElement *source;
-    GstElement *convert;
-    GstElement *sink;
+// Pipeline elements
+    GstElement *pipeline = nullptr;
+    GstElement *source = nullptr;
+    GstElement *convert = nullptr;
+    GstElement *flipVideo = nullptr;
+    GstElement *sink = nullptr;
 
-    GstBus *bus;
+    GstBus *bus = nullptr;
 };
 
 #endif // PIPELINE_H

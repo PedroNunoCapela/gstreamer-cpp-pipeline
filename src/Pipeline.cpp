@@ -28,13 +28,14 @@ bool Pipeline::createPipelineElements()
 {
     source = gst_element_factory_make("uridecodebin", "source");
     convert = gst_element_factory_make("videoconvert", "convert");
+    flipVideo = gst_element_factory_make("videoflip", "flip");
     sink = gst_element_factory_make("autovideosink", "sink");
 
     // create an empty pipeline
     pipeline = gst_pipeline_new("main-pipeline");
 
     // verify if there is any errors
-    if (!source || !sink || !convert)
+    if (!source || !sink || !convert || !flipVideo)
     {
         g_printerr("Failed to create elements!\n");
         return false;
@@ -51,10 +52,10 @@ bool Pipeline::createPipelineElements()
  */
 bool Pipeline::buildPipeline()
 {
-    gst_bin_add_many(GST_BIN(pipeline), source, convert, sink, NULL);
+    gst_bin_add_many(GST_BIN(pipeline), source, convert, flipVideo, sink, NULL);
 
     // link elements together in the pipeline and verify if there is any errors
-    if (!gst_element_link_many(convert, sink, NULL))
+    if (!gst_element_link_many(convert, flipVideo, sink, NULL))
     {
         g_printerr("Error linking elements on the pipeline.");
         return false;
@@ -76,7 +77,7 @@ bool Pipeline::startPipeline()
         g_printerr("Failed to set pipeline playing state.");
         return false;
     }
-    
+
     return true;
 }
 
@@ -190,14 +191,17 @@ void Pipeline::onPadAdded(GstElement *src, GstPad *new_pad)
 }
 
 /*
- * This method just set's the URI for the video file we want to use in source
+ * This method configures the properties of the elements that need to be configured
  */
-void Pipeline::setUri()
+void Pipeline::configureElements()
 {
     // TODO: remove this local URI
+    // set's the URI for the video file we want to use in source
     g_object_set(source, "uri",
                  "file:///Users/nunocapela/programming/gstreamer_projects/gstreamer-cpp-pipeline/assets/dolphins.MP4",
                  NULL);
+
+    g_object_set(flipVideo, "method", 1, NULL); // 1 = rotate 90° clockwise
 }
 
 /*
@@ -218,7 +222,7 @@ int Pipeline::run()
         return -1;
     if (!buildPipeline())
         return -1;
-    setUri();
+    configureElements();
     connectSignals();
     if (!startPipeline())
         return -1;
