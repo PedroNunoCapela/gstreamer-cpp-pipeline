@@ -1,5 +1,7 @@
 #include "Pipeline.h"
 
+constexpr const char* VIDEO_PATH = "assets/dolphins.MP4";
+
 Pipeline::Pipeline(int argc, char **argv)
 {
     gst_init(&argc, &argv);
@@ -197,9 +199,11 @@ void Pipeline::configureElements()
 {
     // TODO: remove this local URI
     // set's the URI for the video file we want to use in source
-    g_object_set(source, "uri",
-                 "file:///Users/nunocapela/programming/gstreamer_projects/gstreamer-cpp-pipeline/assets/dolphins.MP4",
-                 NULL);
+
+    gchar *fileURI = gst_filename_to_uri(VIDEO_PATH,
+                                              NULL);
+
+    g_object_set(source, "uri", fileURI, NULL);
 
     g_object_set(flipVideo, "method", 1, NULL); // 1 = rotate 90° clockwise
 }
