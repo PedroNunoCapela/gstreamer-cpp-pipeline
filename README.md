@@ -42,12 +42,6 @@ cmake --build build
 ./build/pipelineApp
 ```
 
-## Run
-
-```bash
-./build/pipelineApp
-```
-
 ## Future work
 
 - Integrate OpenCV to detect and track the dolphins in the footage
