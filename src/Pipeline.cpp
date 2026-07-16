@@ -1,6 +1,7 @@
 #include "Pipeline.h"
 
-constexpr const char* VIDEO_PATH = "assets/dolphins.MP4";
+constexpr const char *VIDEO_PATH = "assets/dolphins.MP4";
+constexpr unsigned int ZEROLATENCY = 0x00000004;
 
 Pipeline::Pipeline(int argc, char **argv)
 {
@@ -13,12 +14,22 @@ Pipeline::Pipeline(int argc, char **argv)
 Pipeline::~Pipeline()
 {
     if (pipeline)
-    {
         gst_element_set_state(pipeline, GST_STATE_NULL); // state should be null before we can free the pipeline
-        gst_object_unref(pipeline);
+
+    if (tee && tee_display_pad)
+    {
+        gst_element_release_request_pad(tee, tee_display_pad);
+        gst_object_unref(tee_display_pad);
+    }
+    if (tee && tee_record_pad)
+    {
+        gst_element_release_request_pad(tee, tee_record_pad);
+        gst_object_unref(tee_record_pad);
     }
     if (bus)
         gst_object_unref(bus);
+    if (pipeline)
+        gst_object_unref(pipeline);
 }
 
 /*
@@ -31,13 +42,25 @@ bool Pipeline::createPipelineElements()
     source = gst_element_factory_make("uridecodebin", "source");
     convert = gst_element_factory_make("videoconvert", "convert");
     flipVideo = gst_element_factory_make("videoflip", "flip");
-    sink = gst_element_factory_make("autovideosink", "sink");
+    tee = gst_element_factory_make("tee", "tee");
+    display_queue = gst_element_factory_make("queue", "display_queue");
+    display_sink = gst_element_factory_make("autovideosink", "display_sink");
+
+    // elements for video recording
+    record_queue = gst_element_factory_make("queue", "record_queue");
+    record_sink = gst_element_factory_make("filesink", "record_sink");
+    record_convert = gst_element_factory_make("videoconvert", "record_convert");
+    encoder = gst_element_factory_make("x264enc", "encoder");
+    parser = gst_element_factory_make("h264parse", "parser");
+    muxer = gst_element_factory_make("matroskamux", "muxer");
 
     // create an empty pipeline
     pipeline = gst_pipeline_new("main-pipeline");
 
     // verify if there is any errors
-    if (!source || !sink || !convert || !flipVideo)
+    if (!source || !convert || !flipVideo || !tee ||
+        !display_queue || !display_sink || !record_queue || !record_sink ||
+        !record_convert || !encoder || !parser || !muxer)
     {
         g_printerr("Failed to create elements!\n");
         return false;
@@ -54,14 +77,56 @@ bool Pipeline::createPipelineElements()
  */
 bool Pipeline::buildPipeline()
 {
-    gst_bin_add_many(GST_BIN(pipeline), source, convert, flipVideo, sink, NULL);
+    gst_bin_add_many(GST_BIN(pipeline), source, convert, flipVideo, tee, display_queue, record_queue,
+                     record_convert, encoder, parser, muxer, record_sink, display_sink, NULL);
 
-    // link elements together in the pipeline and verify if there is any errors
-    if (!gst_element_link_many(convert, flipVideo, sink, NULL))
+    if (!linkElements())
+        return false;
+
+    if (!linkElementsManual())
+        return false;
+
+    return true;
+}
+
+/*
+ * This method links elements on the pipeline
+ */
+bool Pipeline::linkElements()
+{
+    if (!gst_element_link_many(convert, flipVideo, tee, NULL) ||
+        !gst_element_link_many(display_queue, display_sink, NULL) ||
+        !gst_element_link_many(record_queue, record_convert, encoder, parser, muxer, record_sink, NULL))
     {
         g_printerr("Error linking elements on the pipeline.");
         return false;
     }
+    return true;
+}
+
+/*
+ * This method links elements that require manual linkage
+ */
+bool Pipeline::linkElementsManual()
+{
+    // pads used for connecting tee branch -> display branch
+    tee_display_pad = gst_element_request_pad_simple(tee, "src_%u");
+    GstPad *queue_display_pad = gst_element_get_static_pad(display_queue, "sink");
+
+    // pads used for connecting tee branch  -> record branch
+    tee_record_pad = gst_element_request_pad_simple(tee, "src_%u");
+    GstPad *queue_record_pad = gst_element_get_static_pad(record_queue, "sink");
+
+    // check for errors
+    if (gst_pad_link(tee_display_pad, queue_display_pad) != GST_PAD_LINK_OK ||
+        gst_pad_link(tee_record_pad, queue_record_pad) != GST_PAD_LINK_OK)
+    {
+        g_printerr("Tee could not be linked.\n");
+        return false;
+    }
+
+    gst_object_unref(queue_display_pad);
+    gst_object_unref(queue_record_pad);
 
     return true;
 }
@@ -197,15 +262,21 @@ void Pipeline::onPadAdded(GstElement *src, GstPad *new_pad)
  */
 void Pipeline::configureElements()
 {
-    // TODO: remove this local URI
     // set's the URI for the video file we want to use in source
-
-    gchar *fileURI = gst_filename_to_uri(VIDEO_PATH,
-                                              NULL);
+    gchar *fileURI = gst_filename_to_uri(VIDEO_PATH, NULL);
 
     g_object_set(source, "uri", fileURI, NULL);
+    g_free(fileURI);
 
+    // configuration of video element
     g_object_set(flipVideo, "method", 1, NULL); // 1 = rotate 90° clockwise
+
+    // configuration filesink
+    g_object_set(record_sink, "location", "output/recording.mkv", NULL);
+
+    g_object_set(encoder,
+                 "tune", ZEROLATENCY, // this parameter tells the encoder to send the frames as they come instead of waiting for a group of frames
+                 NULL);
 }
 
 /*

@@ -47,6 +47,7 @@ cmake --build build
 - Integrate OpenCV to detect and track the dolphins in the footage
 - Add a `tee` branch to record the processed stream to file while displaying it
 - Add a timestamp overlay to the video
+- Add video player GUI
 
 ## References
 

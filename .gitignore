@@ -10,9 +10,10 @@ app
 # Build directory from cmake
 build/
 
-# Output files - for recordings
-output.mp4
-*.mp4
+# Folder for the recording 
+output/*
+#keep the folder, ignore the content
+!output/.gitkeep    
 
 # keeps my video
 !assets/dolphins.MP4  
