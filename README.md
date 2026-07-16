@@ -44,8 +44,9 @@ cmake --build build
 
 ## Future work
 
+- Add an `appsink`/`appsrc` branch to process frames in C++ (OpenCV)
 - Integrate OpenCV to detect and track the dolphins in the footage
-- Add a `tee` branch to record the processed stream to file while displaying it
+- Start/stop recording on demand (runtime), without interrupting the video display
 - Add a timestamp overlay to the video
 - Add video player GUI
 
