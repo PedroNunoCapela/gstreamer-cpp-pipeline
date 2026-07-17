@@ -1,7 +1,8 @@
 # GStreamer C++ Video Pipeline
 
-A small C++ project built to learn the core concepts of GStreamer (elements, pads, dynamic pad linking). 
-Currently, it reads a video file, rotates it, and displays it. 
+A small C++ project built to learn the core concepts of GStreamer (elements, pads, dynamic pad linking, request pads, and pipeline branching with tee). 
+Currently, it reads a video file, rotates it and displays it while simultaneously recording the output to a file.
+
 See [Future work](#future-work) to learn about further development.
 
 The footage was recorded at sea aboard a Navy ship.
