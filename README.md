@@ -9,9 +9,7 @@ The footage was recorded at sea aboard a Navy ship.
 
 ## Pipeline
 
-```
-uridecodebin → videoconvert → videoflip → autovideosink
-```
+![Pipeline diagram](docs/pipeline_diagram.jpg)
 
 The pipeline is built in code, wrapping GStreamer's C API in a `Pipeline` class. 
 The source uses dynamic pads, so it is linked at runtime through the `pad-added` signal.
